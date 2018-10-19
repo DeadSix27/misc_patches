@@ -1,0 +1,77 @@
+diff -Nur fontconfig_git.orig/src/fccache.c fontconfig_git/src/fccache.c
+--- fontconfig_git.orig/src/fccache.c	2018-10-19 16:31:17.622009518 +0000
++++ fontconfig_git/src/fccache.c	2018-10-19 16:31:26.173928276 +0000
+@@ -38,6 +38,73 @@
+ #endif
+ #if defined(_WIN32)
+ #include <sys/locking.h>
++// implementation for utimes taken from KDE mingw headers
++#include <errno.h>
++#include <wtypes.h>
++#define CSYNC_SECONDS_SINCE_1601 11644473600LL
++#define CSYNC_USEC_IN_SEC            1000000LL
++//after Microsoft KB167296
++static void UnixTimevalToFileTime(struct timeval t, LPFILETIME pft)
++{
++    LONGLONG ll;
++    ll = Int32x32To64(t.tv_sec, CSYNC_USEC_IN_SEC*10) + t.tv_usec*10 + CSYNC_SECONDS_SINCE_1601*CSYNC_USEC_IN_SEC*10;
++    pft->dwLowDateTime = (DWORD)ll;
++    pft->dwHighDateTime = ll >> 32;
++}
++
++int utimes(const char *uri, const struct timeval *times) {
++    FILETIME LastAccessTime;
++    FILETIME LastModificationTime;
++    HANDLE hFile;
++
++    mbchar_t *wuri = c_utf8_path_to_locale( uri );
++
++    if(times) {
++        UnixTimevalToFileTime(times[0], &LastAccessTime);
++        UnixTimevalToFileTime(times[1], &LastModificationTime);
++    }
++    else {
++        GetSystemTimeAsFileTime(&LastAccessTime);
++        GetSystemTimeAsFileTime(&LastModificationTime);
++    }
++
++    hFile=CreateFileW(wuri, FILE_WRITE_ATTRIBUTES, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
++                      NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL+FILE_FLAG_BACKUP_SEMANTICS, NULL);
++    if(hFile==INVALID_HANDLE_VALUE) {
++        switch(GetLastError()) {
++            case ERROR_FILE_NOT_FOUND:
++                errno=ENOENT;
++                break;
++            case ERROR_PATH_NOT_FOUND:
++            case ERROR_INVALID_DRIVE:
++                errno=ENOTDIR;
++                break;
++                /*case ERROR_WRITE_PROTECT:   //CreateFile sets ERROR_ACCESS_DENIED on read-only devices
++                 *                errno=EROFS;
++                 *                break;*/
++                case ERROR_ACCESS_DENIED:
++                    errno=EACCES;
++                    break;
++                default:
++                    errno=ENOENT;   //what other errors can occur?
++        }
++
++        return -1;
++    }
++
++    if(!SetFileTime(hFile, NULL, &LastAccessTime, &LastModificationTime)) {
++        //can this happen?
++        errno=ENOENT;
++        CloseHandle(hFile);
++        c_free_locale_string(wuri);
++        return -1;
++    }
++
++    CloseHandle(hFile);
++    c_free_locale_string(wuri);
++
++    return 0;
++}
+ #else
+ #include <uuid/uuid.h>
+ #endif
