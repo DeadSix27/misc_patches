@@ -24,7 +24,7 @@ diff -Nur fontconfig_git.orig/src/fccache.c fontconfig_git/src/fccache.c
 +    FILETIME LastModificationTime;
 +    HANDLE hFile;
 +
-+    mbchar_t *wuri = c_utf8_path_to_locale( uri );
++    wchar_t *wuri = c_utf8_path_to_locale( uri );
 +
 +    if(times) {
 +        UnixTimevalToFileTime(times[0], &LastAccessTime);
