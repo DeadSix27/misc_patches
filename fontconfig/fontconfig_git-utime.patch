@@ -1,0 +1,19 @@
+diff -Nur fontconfig_git.patched/src/fccache.c fontconfig_git/src/fccache.c
+--- fontconfig_git.patched/src/fccache.c	2018-11-07 10:15:42.529263784 +0000
++++ fontconfig_git/src/fccache.c	2018-11-07 10:21:41.493716077 +0000
+@@ -55,6 +55,15 @@
+     FcChar8 *target;
+     FcBool ret = FcTrue;
+ #ifndef _WIN32
++
++	int utimes(const char *filename, const struct timeval times[2]) {
++		struct _utimbuf timebuffer;
++		timebuffer.actime = times[0].tv_sec;
++		timebuffer.modtime = times[1].tv_sec;
++
++		return _utime(filename, &timebuffer);
++	}
++
+     FcChar8 *uuidname;
+ 
+     if (sysroot)
