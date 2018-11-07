@@ -1,18 +1,26 @@
 diff -Nur fontconfig_git.patched/src/fccache.c fontconfig_git/src/fccache.c
 --- fontconfig_git.patched/src/fccache.c	2018-11-07 10:15:42.529263784 +0000
-+++ fontconfig_git/src/fccache.c	2018-11-07 10:21:41.493716077 +0000
-@@ -55,6 +55,15 @@
++++ fontconfig_git/src/fccache.c	2018-11-07 10:24:41.164185185 +0000
+@@ -45,6 +45,15 @@
+ #ifndef O_BINARY
+ #define O_BINARY 0
+ #endif
++#ifdef __MINGW32__
++int utimes(const char *filename, const struct timeval times[2]) {
++	struct _utimbuf timebuffer;
++	timebuffer.actime = times[0].tv_sec;
++	timebuffer.modtime = times[1].tv_sec;
++
++	return _utime(filename, &timebuffer);
++}
++#endif
+ 
+ FcBool
+ FcDirCacheCreateUUID (FcChar8  *dir,
+@@ -55,6 +64,7 @@
      FcChar8 *target;
      FcBool ret = FcTrue;
  #ifndef _WIN32
-+
-+	int utimes(const char *filename, const struct timeval times[2]) {
-+		struct _utimbuf timebuffer;
-+		timebuffer.actime = times[0].tv_sec;
-+		timebuffer.modtime = times[1].tv_sec;
-+
-+		return _utime(filename, &timebuffer);
-+	}
 +
      FcChar8 *uuidname;
  
